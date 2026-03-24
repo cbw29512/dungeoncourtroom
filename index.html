@@ -802,33 +802,13 @@ async function generateScript() {
   const prompt = buildPrompt(c);
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: `You are the scriptwriter for Dungeon Courtroom, a YouTube Shorts series where D&D monsters argue rules questions in a fantasy courtroom drama. 
-
-The cast:
-- JUDGE VORN: Gruff half-orc judge in purple robes with a white wig. Impatient, no-nonsense, occasionally wise.
-- PROSECUTOR SKRIX: Sly goblin lawyer. Cites rules obsessively, dramatic and cunning.
-- DEFENSE GRIMBOLT: Skeleton lawyer in black robes. Calm, philosophical, uses death metaphors.
-- BAILIFF THUNK: Large orc guard. Simple but loyal. Keeps order.
-- WITNESS/DEFENDANT: The relevant monster or player character.
-
-Write a short courtroom drama script (6-8 exchanges) debating the D&D rules question provided. Format as:
-
-PANEL 1 - [scene description]
-CHARACTER: "Dialogue"
-
-Keep it punchy, funny, and D&D-accurate. End with Judge Vorn's ruling.`,
-        messages: [{ role: 'user', content: prompt }]
-      })
+      body: JSON.stringify({ prompt })
     });
-
     const data = await res.json();
-    const script = data.content?.[0]?.text || 'Error generating script.';
+    const script = data.script || data.error || 'Error generating script.';
     STATE.scripts[c.id] = script;
     localStorage.setItem('dc_scripts', JSON.stringify(STATE.scripts));
     toast('Script forged in the fires of justice!');
