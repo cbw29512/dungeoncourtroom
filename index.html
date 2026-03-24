@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dungeon Courtroom — Command Console</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@400;600&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0a07;
+    --bg2: #13100c;
+    --bg3: #1c1610;
+    --gold: #c9a84c;
+    --gold2: #e8c96a;
+    --red: #8b2020;
+    --red2: #c0392b;
+    --green: #1a4a2e;
+    --green2: #27ae60;
+    --stone: #3a3028;
+    --text: #e8dcc8;
+    --muted: #8a7a60;
+    --border: #3a2e1e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IM Fell English', serif;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(139,32,32,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 100%, rgba(201,168,76,0.06) 0%, transparent 60%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%230d0a07'/%3E%3Crect width='1' height='1' fill='%23ffffff08'/%3E%3C/svg%3E");
+  }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, rgba(201,168,76,0.05) 0%, transparent 100%);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .gavel-icon {
+    font-size: 28px;
+    filter: drop-shadow(0 0 8px rgba(201,168,76,0.5));
+  }
+
+  .logo h1 {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 18px;
+    color: var(--gold);
+    text-shadow: 0 0 20px rgba(201,168,76,0.3);
+    letter-spacing: 2px;
+  }
+
+  .logo span {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    display: block;
+    margin-top: 2px;
+  }
+
+  .status-bar {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+
+  .status-pill {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 2px;
+    padding: 4px 12px;
+    border-radius: 2px;
+    border: 1px solid;
+  }
+
+  .status-pill.reddit { border-color: var(--red); color: #e85d4a; background: rgba(139,32,32,0.15); }
+  .status-pill.form { border-color: var(--gold); color: var(--gold); background: rgba(201,168,76,0.1); }
+  .status-pill.queue { border-color: var(--stone); color: var(--muted); background: rgba(58,48,40,0.3); }
+
+  /* MAIN LAYOUT */
+  .container {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    grid-template-rows: auto 1fr;
+    gap: 0;
+    height: calc(100vh - 77px);
+  }
+
+  /* QUEUE PANEL */
+  .queue-panel {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg2);
+  }
+
+  .panel-title {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  .btn-refresh {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 2px;
+    padding: 5px 14px;
+    background: transparent;
+    border: 1px solid var(--stone);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .btn-refresh:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* FILTERS */
+  .filters {
+    padding: 12px 24px;
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+  }
+
+  .filter-btn {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 2px;
+    padding: 4px 12px;
+    background: transparent;
+    border: 1px solid var(--stone);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .filter-btn.active, .filter-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: rgba(201,168,76,0.08);
+  }
+
+  /* CASE LIST */
+  .case-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+  }
+
+  .case-list::-webkit-scrollbar { width: 4px; }
+  .case-list::-webkit-scrollbar-track { background: var(--bg); }
+  .case-list::-webkit-scrollbar-thumb { background: var(--stone); border-radius: 2px; }
+
+  .case-card {
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .case-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--stone);
+    transition: background 0.2s;
+  }
+
+  .case-card:hover { border-color: var(--gold); background: var(--bg3); }
+  .case-card:hover::before { background: var(--gold); }
+  .case-card.selected { border-color: var(--gold); background: var(--bg3); }
+  .case-card.selected::before { background: var(--gold); }
+  .case-card.source-form::before { background: #4a90d9; }
+  .case-card.source-form:hover::before, .case-card.source-form.selected::before { background: #6ab0f5; }
+
+  .case-source {
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .source-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--red2);
+    display: inline-block;
+  }
+
+  .source-dot.form { background: #4a90d9; }
+
+  .case-title {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .case-meta {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    display: flex;
+    gap: 12px;
+  }
+
+  .loading-card {
+    padding: 40px;
+    text-align: center;
+    color: var(--muted);
+    font-style: italic;
+    font-size: 14px;
+  }
+
+  .spin {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* RIGHT PANEL */
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* CASE DETAIL */
+  .case-detail {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .case-detail::-webkit-scrollbar { width: 4px; }
+  .case-detail::-webkit-scrollbar-track { background: var(--bg); }
+  .case-detail::-webkit-scrollbar-thumb { background: var(--stone); }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 12px;
+    color: var(--muted);
+  }
+
+  .empty-icon { font-size: 40px; opacity: 0.3; }
+
+  .empty-state p {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .detail-source {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .detail-title {
+    font-size: 18px;
+    line-height: 1.6;
+    color: var(--text);
+    margin-bottom: 16px;
+    font-style: italic;
+  }
+
+  .detail-body {
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--muted);
+    margin-bottom: 20px;
+    border-left: 2px solid var(--border);
+    padding-left: 14px;
+    font-style: italic;
+  }
+
+  .detail-stats {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .stat {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .stat strong {
+    display: block;
+    font-size: 14px;
+    color: var(--gold);
+    font-family: 'IM Fell English', serif;
+    letter-spacing: 0;
+    margin-bottom: 2px;
+  }
+
+  /* SCRIPT OUTPUT */
+  .script-output {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 16px;
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  .script-output.visible { display: block; }
+
+  .script-label {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .btn-copy {
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 2px;
+    padding: 3px 10px;
+    background: rgba(201,168,76,0.1);
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .btn-copy:hover { background: rgba(201,168,76,0.2); }
+
+  .script-text {
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--text);
+    white-space: pre-wrap;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .script-text::-webkit-scrollbar { width: 3px; }
+  .script-text::-webkit-scrollbar-thumb { background: var(--stone); }
+
+  /* ACTION BUTTONS */
+  .action-bar {
+    padding: 16px 24px;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .action-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 10px 0;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.25s;
+    text-transform: uppercase;
+    flex: 1;
+    text-align: center;
+  }
+
+  .btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .btn-approve {
+    background: rgba(26,74,46,0.3);
+    border-color: var(--green2);
+    color: var(--green2);
+  }
+
+  .btn-approve:hover:not(:disabled) {
+    background: rgba(26,74,46,0.6);
+    box-shadow: 0 0 12px rgba(39,174,96,0.2);
+  }
+
+  .btn-deny {
+    background: rgba(139,32,32,0.2);
+    border-color: var(--red2);
+    color: #e85d4a;
+  }
+
+  .btn-deny:hover:not(:disabled) {
+    background: rgba(139,32,32,0.4);
+    box-shadow: 0 0 12px rgba(192,57,43,0.2);
+  }
+
+  .btn-generate {
+    background: rgba(201,168,76,0.1);
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  .btn-generate:hover:not(:disabled) {
+    background: rgba(201,168,76,0.2);
+    box-shadow: 0 0 16px rgba(201,168,76,0.2);
+  }
+
+  .btn-youtube {
+    background: rgba(139,32,32,0.2);
+    border-color: #c0392b;
+    color: #e85d4a;
+  }
+
+  .btn-youtube:hover:not(:disabled) {
+    background: rgba(139,32,32,0.4);
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--bg3);
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 2px;
+    padding: 10px 24px;
+    text-transform: uppercase;
+    transition: transform 0.3s;
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* DENIED list */
+  .denied-badge {
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 1px;
+    padding: 2px 6px;
+    background: rgba(139,32,32,0.3);
+    border: 1px solid var(--red2);
+    color: #e85d4a;
+    text-transform: uppercase;
+  }
+
+  .approved-badge {
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 1px;
+    padding: 2px 6px;
+    background: rgba(26,74,46,0.3);
+    border: 1px solid var(--green2);
+    color: var(--green2);
+    text-transform: uppercase;
+  }
+
+  /* GENERATING */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .generating { animation: pulse 1.5s ease-in-out infinite; }
+
+  /* DIVIDER */
+  .ornament {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 8px;
+    margin: 8px 0;
+    opacity: 0.4;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="gavel-icon">⚖️</div>
+    <div>
+      <h1>Dungeon Courtroom</h1>
+      <span>Case Command Console</span>
+    </div>
+  </div>
+  <div class="status-bar">
+    <div class="status-pill reddit" id="reddit-status">● Reddit</div>
+    <div class="status-pill form" id="form-status">◆ Form</div>
+    <div class="status-pill queue" id="queue-count">0 Cases</div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- LEFT: CASE QUEUE -->
+  <div class="queue-panel">
+    <div class="panel-header">
+      <span class="panel-title">⚔ Case Queue</span>
+      <button class="btn-refresh" onclick="loadCases()">↻ Refresh</button>
+    </div>
+    <div class="filters">
+      <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+      <button class="filter-btn" onclick="setFilter('reddit', this)">Reddit</button>
+      <button class="filter-btn" onclick="setFilter('form', this)">Form</button>
+      <button class="filter-btn" onclick="setFilter('approved', this)">Approved</button>
+      <button class="filter-btn" onclick="setFilter('pending', this)">Pending</button>
+    </div>
+    <div class="case-list" id="case-list">
+      <div class="loading-card"><span class="spin">⚙</span> Summoning cases...</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: DETAIL + ACTIONS -->
+  <div class="right-panel">
+
+    <div class="case-detail" id="case-detail">
+      <div class="empty-state">
+        <div class="empty-icon">📜</div>
+        <p>Select a case to begin</p>
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <div class="action-row">
+        <button class="btn btn-approve" id="btn-approve" disabled onclick="approveCase()">✓ Approve</button>
+        <button class="btn btn-deny" id="btn-deny" disabled onclick="denyCase()">✗ Deny</button>
+      </div>
+      <button class="btn btn-generate" id="btn-generate" disabled onclick="generateScript()">⚡ Generate Courtroom Script</button>
+      <button class="btn btn-youtube" id="btn-youtube" disabled onclick="publishYouTube()">▶ Publish to YouTube</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const STATE = {
+  cases: [],
+  selected: null,
+  filter: 'all',
+  decisions: JSON.parse(localStorage.getItem('dc_decisions') || '{}'),
+  scripts: JSON.parse(localStorage.getItem('dc_scripts') || '{}'),
+};
+
+// ─── REDDIT FETCH ─────────────────────────────────────────────────────────────
+async function fetchReddit() {
+  try {
+    const res = await fetch(
+      'https://www.reddit.com/r/DungeonCourtroom/new.json?limit=25',
+      { headers: { 'User-Agent': 'DungeonCourtroom/1.0' } }
+    );
+    const data = await res.json();
+    const posts = data.data.children.map(c => ({
+      id: 'r_' + c.data.id,
+      source: 'reddit',
+      title: c.data.title,
+      body: c.data.selftext || '',
+      author: c.data.author,
+      score: c.data.score,
+      comments: c.data.num_comments,
+      url: 'https://reddit.com' + c.data.permalink,
+      created: new Date(c.data.created_utc * 1000),
+    }));
+    document.getElementById('reddit-status').textContent = '● Reddit';
+    document.getElementById('reddit-status').style.color = '#27ae60';
+    document.getElementById('reddit-status').style.borderColor = '#27ae60';
+    return posts;
+  } catch (e) {
+    document.getElementById('reddit-status').textContent = '● Reddit Error';
+    return [];
+  }
+}
+
+// ─── FORM SUBMISSIONS (localStorage) ─────────────────────────────────────────
+function getFormSubmissions() {
+  return JSON.parse(localStorage.getItem('dc_form_submissions') || '[]');
+}
+
+// ─── LOAD ALL CASES ───────────────────────────────────────────────────────────
+async function loadCases() {
+  document.getElementById('case-list').innerHTML =
+    '<div class="loading-card"><span class="spin">⚙</span> Summoning cases from the realm...</div>';
+
+  const redditCases = await fetchReddit();
+  const formCases = getFormSubmissions();
+  STATE.cases = [...formCases, ...redditCases];
+
+  document.getElementById('queue-count').textContent = STATE.cases.length + ' Cases';
+  renderList();
+}
+
+// ─── RENDER LIST ──────────────────────────────────────────────────────────────
+function renderList() {
+  const list = document.getElementById('case-list');
+  let filtered = STATE.cases.filter(c => {
+    const decision = STATE.decisions[c.id];
+    if (STATE.filter === 'reddit') return c.source === 'reddit';
+    if (STATE.filter === 'form') return c.source === 'form';
+    if (STATE.filter === 'approved') return decision === 'approved';
+    if (STATE.filter === 'pending') return !decision;
+    return true;
+  });
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="loading-card" style="color:var(--muted)">No cases match this filter.</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(c => {
+    const decision = STATE.decisions[c.id];
+    const badge = decision === 'approved'
+      ? '<span class="approved-badge">Approved</span>'
+      : decision === 'denied'
+      ? '<span class="denied-badge">Denied</span>'
+      : '';
+    const sourceClass = c.source === 'form' ? 'source-form' : '';
+    const dotClass = c.source === 'form' ? 'form' : '';
+    const timeAgo = c.created ? timeAgoStr(c.created) : '';
+    return `
+      <div class="case-card ${sourceClass} ${STATE.selected?.id === c.id ? 'selected' : ''}"
+           onclick="selectCase('${c.id}')">
+        <div class="case-source">
+          <span class="source-dot ${dotClass}"></span>
+          ${c.source === 'reddit' ? 'r/DungeonCourtroom' : 'Google Form'}
+          &nbsp;${timeAgo}
+          ${badge}
+        </div>
+        <div class="case-title">${truncate(c.title, 100)}</div>
+        <div class="case-meta">
+          <span>u/${c.author || 'Anonymous'}</span>
+          ${c.score !== undefined ? `<span>↑ ${c.score}</span>` : ''}
+          ${c.comments !== undefined ? `<span>💬 ${c.comments}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ─── SELECT CASE ──────────────────────────────────────────────────────────────
+function selectCase(id) {
+  STATE.selected = STATE.cases.find(c => c.id === id);
+  renderList();
+  renderDetail();
+  enableButtons();
+}
+
+// ─── RENDER DETAIL ────────────────────────────────────────────────────────────
+function renderDetail() {
+  const c = STATE.selected;
+  if (!c) return;
+  const decision = STATE.decisions[c.id];
+  const script = STATE.scripts[c.id];
+
+  document.getElementById('case-detail').innerHTML = `
+    <div class="detail-source">
+      <span class="source-dot ${c.source === 'form' ? 'form' : ''}"></span>
+      ${c.source === 'reddit' ? 'r/DungeonCourtroom' : 'Google Form Submission'}
+      ${decision ? `&nbsp;—&nbsp;<span style="color:${decision==='approved'?'var(--green2)':'var(--red2)'}">${decision.toUpperCase()}</span>` : ''}
+    </div>
+
+    <div class="detail-title">${c.title}</div>
+
+    ${c.body ? `<div class="detail-body">${c.body.substring(0, 600)}${c.body.length > 600 ? '...' : ''}</div>` : ''}
+
+    <div class="detail-stats">
+      <div class="stat"><strong>u/${c.author || 'Anonymous'}</strong>Submitted by</div>
+      ${c.score !== undefined ? `<div class="stat"><strong>${c.score}</strong>Upvotes</div>` : ''}
+      ${c.comments !== undefined ? `<div class="stat"><strong>${c.comments}</strong>Comments</div>` : ''}
+      ${c.created ? `<div class="stat"><strong>${timeAgoStr(c.created)}</strong>Posted</div>` : ''}
+    </div>
+
+    ${c.url ? `<a href="${c.url}" target="_blank" style="font-family:'Cinzel',serif;font-size:9px;letter-spacing:2px;color:var(--muted);text-decoration:none;text-transform:uppercase;">↗ View on Reddit</a>` : ''}
+
+    <div class="ornament">— ⚖ —</div>
+
+    <div class="script-output ${script ? 'visible' : ''}" id="script-output">
+      <div class="script-label">
+        ⚡ Generated Courtroom Script
+        <button class="btn-copy" onclick="copyScript()">Copy</button>
+      </div>
+      <div class="script-text" id="script-text">${script || ''}</div>
+    </div>
+  `;
+}
+
+// ─── ENABLE BUTTONS ───────────────────────────────────────────────────────────
+function enableButtons() {
+  const c = STATE.selected;
+  const decision = c ? STATE.decisions[c.id] : null;
+  const hasScript = c ? !!STATE.scripts[c.id] : false;
+
+  document.getElementById('btn-approve').disabled = !c || decision === 'approved';
+  document.getElementById('btn-deny').disabled = !c || decision === 'denied';
+  document.getElementById('btn-generate').disabled = !c || decision !== 'approved';
+  document.getElementById('btn-youtube').disabled = !hasScript;
+}
+
+// ─── APPROVE ──────────────────────────────────────────────────────────────────
+function approveCase() {
+  if (!STATE.selected) return;
+  STATE.decisions[STATE.selected.id] = 'approved';
+  localStorage.setItem('dc_decisions', JSON.stringify(STATE.decisions));
+  toast('Case approved — ready for scripting');
+  renderList();
+  renderDetail();
+  enableButtons();
+}
+
+// ─── DENY ─────────────────────────────────────────────────────────────────────
+function denyCase() {
+  if (!STATE.selected) return;
+  STATE.decisions[STATE.selected.id] = 'denied';
+  localStorage.setItem('dc_decisions', JSON.stringify(STATE.decisions));
+  toast('Case denied');
+  // Auto-select next pending case
+  const next = STATE.cases.find(c =>
+    c.id !== STATE.selected.id && !STATE.decisions[c.id]
+  );
+  if (next) selectCase(next.id);
+  else { renderList(); renderDetail(); enableButtons(); }
+}
+
+// ─── GENERATE SCRIPT ──────────────────────────────────────────────────────────
+async function generateScript() {
+  const c = STATE.selected;
+  if (!c) return;
+
+  const btn = document.getElementById('btn-generate');
+  btn.textContent = '⚡ Summoning the Court...';
+  btn.classList.add('generating');
+  btn.disabled = true;
+
+  const prompt = buildPrompt(c);
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: `You are the scriptwriter for Dungeon Courtroom, a YouTube Shorts series where D&D monsters argue rules questions in a fantasy courtroom drama. 
+
+The cast:
+- JUDGE VORN: Gruff half-orc judge in purple robes with a white wig. Impatient, no-nonsense, occasionally wise.
+- PROSECUTOR SKRIX: Sly goblin lawyer. Cites rules obsessively, dramatic and cunning.
+- DEFENSE GRIMBOLT: Skeleton lawyer in black robes. Calm, philosophical, uses death metaphors.
+- BAILIFF THUNK: Large orc guard. Simple but loyal. Keeps order.
+- WITNESS/DEFENDANT: The relevant monster or player character.
+
+Write a short courtroom drama script (6-8 exchanges) debating the D&D rules question provided. Format as:
+
+PANEL 1 - [scene description]
+CHARACTER: "Dialogue"
+
+Keep it punchy, funny, and D&D-accurate. End with Judge Vorn's ruling.`,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await res.json();
+    const script = data.content?.[0]?.text || 'Error generating script.';
+    STATE.scripts[c.id] = script;
+    localStorage.setItem('dc_scripts', JSON.stringify(STATE.scripts));
+    toast('Script forged in the fires of justice!');
+  } catch (e) {
+    STATE.scripts[c.id] = '⚠ Error contacting the Anthropic API. Check your API key in the Vercel environment variables.';
+    toast('Error — check console');
+  }
+
+  btn.textContent = '⚡ Generate Courtroom Script';
+  btn.classList.remove('generating');
+  enableButtons();
+  renderDetail();
+}
+
+function buildPrompt(c) {
+  return `D&D Rules Question for Dungeon Courtroom:
+
+TITLE: ${c.title}
+
+${c.body ? `DETAILS: ${c.body.substring(0, 400)}` : ''}
+
+Write the courtroom drama script debating this rules question.`;
+}
+
+// ─── COPY SCRIPT ──────────────────────────────────────────────────────────────
+function copyScript() {
+  const text = document.getElementById('script-text')?.textContent;
+  if (text) {
+    navigator.clipboard.writeText(text);
+    toast('Script copied to clipboard');
+  }
+}
+
+// ─── YOUTUBE (placeholder) ────────────────────────────────────────────────────
+function publishYouTube() {
+  toast('YouTube upload — coming soon');
+}
+
+// ─── FILTER ───────────────────────────────────────────────────────────────────
+function setFilter(filter, btn) {
+  STATE.filter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderList();
+}
+
+// ─── GOOGLE FORM INTAKE (manual add for testing) ──────────────────────────────
+window.addFormSubmission = function(title, body, author) {
+  const submissions = getFormSubmissions();
+  submissions.unshift({
+    id: 'f_' + Date.now(),
+    source: 'form',
+    title,
+    body: body || '',
+    author: author || 'Form Submission',
+    created: new Date(),
+  });
+  localStorage.setItem('dc_form_submissions', JSON.stringify(submissions));
+  loadCases();
+};
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function truncate(str, n) {
+  return str.length > n ? str.substring(0, n) + '…' : str;
+}
+
+function timeAgoStr(date) {
+  const diff = (Date.now() - new Date(date)) / 1000;
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+  return Math.floor(diff / 86400) + 'd ago';
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+loadCases();
+</script>
+</body>
+</html>
